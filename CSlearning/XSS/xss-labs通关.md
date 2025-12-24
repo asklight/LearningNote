@@ -1,3 +1,23 @@
+# xss原理
+
+### 反射型 
+
+恶意脚本作为请求的一部分发送到服务器，服务器将其”反射“回响应中，受害者点击恶意链接后触发（服务端把用户输入反射到页面）
+
+### 存储型
+
+恶意脚本被存储在服务器上，所有访问该页面的用户都会受影响
+
+![image-20251223224822561](file:///C:/Users/GWG/AppData/Roaming/Typora/typora-user-images/image-20251223224822561.png?lastModify=1766582526)
+
+例如：发送评论、弹幕
+
+### DOM型
+
+完全发生在浏览器端，不依赖服务端的响应输出，而是通过篡改页面的DOM结构，利用前端js对dom的操作漏洞，注入恶意脚本。
+
+# xss练习
+
 ## xss-labs
 
 经常使用的html和js
@@ -36,32 +56,54 @@ html转义字符
 ## pikachu xss练习
 
 1. 反射型xss(get) 输入`<script>alert()</script>`测试，发现输入框限制输入字符数，修改前端限制后成功alert
+
 2. 反射型xss(post) 这个使用弱密码试出来密码，然后一样的payload`<script>alert()</script>`
+
 3. 存储型xss 很容易直接`<a console.log(11)>11</a>`
-4. DOM型xss 
 
+4. DOM型xss 查看前端代码，发现里面是个a标签，尝试”发现被转义了，就换用单引号’成功闭合，使用事件属性`1' onclick="console.log(1)"`,发现成功注入
 
+5. DOM型xss-x 跟上面的差不多，`1' onmouseover="console.log(0)" ' `
 
-### 反射型 
+6. xss盲打  这是一个留言板，直接提交一个a标签，`<a onclick="alert()">111</a>`在管理员界面发现可用
 
-恶意脚本作为请求的一部分发送到服务器，服务器将其”反射“回响应中，受害者点击恶意链接后触发
+7. xss之过滤 这个输入的内容被放入了p标签中，直接使用</p>闭合标签，再加入一个a标签
 
-### 存储型
+8. xss之htmlspecialchars 这个方法把双引号"转义了，用单引号闭合
 
-恶意脚本被存储在服务器上，所有访问该页面的用户都会受影响
+9. xss之href输出 这个单引号双引号都闭合不了，尝试js伪协议：`javascript:alert()`变成
 
-1. 黑客脚本注入
-2. 无过滤保存至数据库
-3. 用户访问
-4. 返回页面
-5. 脚本自动执行
+   `<a href="javascript:alert()">1111</a>`
 
-![image-20251223224822561](C:\Users\GWG\AppData\Roaming\Typora\typora-user-images\image-20251223224822561.png)
+10. xss之js输出 这个我感觉我被js判断那里迷惑了，这个使用get获取的message参数，同时还获取了submit和value参数但并没有渲染到前端，我一直在这里下手什么都做不出；
+  实际上message参数在`<script></script>`标签里面，直接闭合再写个a标签就行了，跟第七题一样。payload:`'</script><a onclick="alert()">11</a>`
 
-例如：发送评论、弹幕
+## DVWA xss
 
-### DOM型
+### DOM
 
-修改页面的dom结构实现，不依赖服务器响应，完全再客户端运行。也是url但是部分url未被发送给服务器
+1. low 直接url中输入`<script>alert()</script>`
 
-![image-20251223225049547](C:\Users\GWG\AppData\Roaming\Typora\typora-user-images\image-20251223225049547.png)
+2. medium 发现输入内容在select标签的option标签里面，直接闭合加a标签
+
+   payload:`></option></select><a onclick=alert()></a>`
+
+   (这个我做的时候想闭合option里面的value，但看到”变成%22，‘变成%27，空格变成%20，我还以为做了什么过滤呢，原来没影响，我闭合value后用onclick没效果是因为option标签没有onclick属性)
+   
+3. high 查看源码发现用的是switch case,这下必须得包含那几个选项了，然而form表单提交的数据想经过js过滤，就可以通过注释绕过，payload:`#<script>alert()</script>`
+
+### Reflected
+
+1. low F12发现输入内容在<pre>标签中，直接闭合加a标签
+
+   payload:`</pre><a onclick=alert()>11</a>`
+
+2. medium 跟low没区别，看了看源码原来是把<script>替换成了空，这样的话可以双写绕过
+
+3. high 依旧可以使用`</pre><a onclick=alert()>11</a>`
+
+### Stored
+
+1. low 同样是放在br标签里，直接闭合加a标签，payload:`<br><a onclick=alert()>11</a>`
+2. medium 这个message我怎么也闭合不了，`''<br>`会被替换，就尝试闭合name，name在前端有字数限制，修改后构造payload:`"</div><a onclick=alert()>11</a>`
+3. high 修改前端，用name闭合依旧可以(我也不知道修改前端算不算作弊？)
