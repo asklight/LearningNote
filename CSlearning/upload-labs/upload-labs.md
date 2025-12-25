@@ -53,3 +53,51 @@
 18. 条件竞争绕过：
 
 累了，剩下的明天再做
+
+总结：
+
+### 🛠️ 文件上传漏洞测试操作表
+
+| 测试阶段          | 绕过技术 (Technique)          | 具体操作步骤 / Payload 示例                                  | 适用场景                                   |
+| :---------------- | :---------------------------- | :----------------------------------------------------------- | :----------------------------------------- |
+| **1. 前端验证**   | **禁用 JS / 后缀伪造**        | 1. 浏览器禁用 JavaScript 提交。<br>2. 或者：把 `shell.php` 改名为 `shell.jpg` 上传，**Burp 抓包拦截**，将文件名改回 `shell.php` 放行。 | 网页弹窗提示，无流量产生。                 |
+| **2. MIME 验证**  | **修改 Content-Type**         | 上传 `shell.php`，Burp 抓包，将 `Content-Type: application/octet-stream` 修改为 `image/jpeg` 或 `image/png`。 | 后端仅检查 HTTP 头部的 Content-Type。      |
+| **3. 黑名单绕过** | **特殊后缀名**                | 尝试上传非标准后缀：`.php3`, `.php5`, `.phtml`, `.phpt` (需服务器支持解析)。 | 后端设置了不严谨的黑名单。                 |
+|                   | **大小写混淆**                | 修改后缀为 `.PhP`, `.pHp`, `.Php` 等。                       | 仅 Windows 或对大小写不敏感的系统。        |
+|                   | **点号绕过 (. )**             | 抓包修改文件名：`shell.php.` (Windows 会自动去除末尾的点)。  | Windows 服务器。                           |
+|                   | **空格绕过 ( )**              | 抓包修改文件名：`shell.php ` (Windows 会自动去除末尾空格)。  | Windows 服务器。                           |
+|                   | **点+空格+点**                | 抓包修改文件名：`shell.php. .` (经过处理后变成 `shell.php.`, 利用 Windows 特性还原为 `shell.php`)。 | 过滤逻辑为：删除末尾点->删除末尾空格。     |
+|                   | **NTFS 流 (::$DATA)**         | 抓包修改文件名：`shell.php::$DATA`。                         | Windows NTFS 文件系统。                    |
+|                   | **双写后缀**                  | 文件名改为 `shell.pphphp` (过滤掉中间的 `php` 后，两边拼合为 `php`)。 | 后端逻辑是 `str_replace` 且只替换一次。    |
+| **4. 配置文件**   | **.htaccess (Apache)**        | 1. 先上传 `.htaccess` 文件，内容：`AddType application/x-httpd-php .jpg`<br>2. 再上传 `shell.jpg`，服务器会将其当作 PHP 解析。 | Apache 服务器，未禁止 .htaccess。          |
+|                   | **.user.ini (Nginx/Apache)**  | 1. 先上传 `.user.ini`，内容：`auto_prepend_file=shell.jpg`<br>2. 再上传 `shell.jpg`<br>3. 访问同目录下任意存在的 PHP 文件，即可触发木马。 | 服务器使用 CGI/FastCGI 模式 (如 php-fpm)。 |
+| **5. 路径截断**   | **00 截断 (GET)**             | 修改 URL 参数：`save_path=../upload/shell.php%00`            | PHP < 5.3.4 且 `magic_quotes_gpc=Off`。    |
+|                   | **00 截断 (POST)**            | 在上传路径参数后添加 `shell.php+`，在 Hex 编辑器中将 `+` 的十六进制 `2b` 改为 `00`。 | 同上。                                     |
+| **6. 内容验证**   | **文件头检查 (幻术字节)**     | 1. 在木马头部添加 `GIF89a`。<br>2. 使用 CMD 合成图片马：`copy normal.jpg /b + shell.php shell.jpg`。 | 检查文件开头 2 字节或使用 `getimagesize`。 |
+|                   | **二次渲染绕过**              | 寻找 GIF/PNG 图片在渲染前后**未变动**的十六进制区域，将一句话木马插入该区域。 | 服务器使用 GD 库重绘图片。                 |
+| **7. 逻辑漏洞**   | **条件竞争 (Race Condition)** | 1. Burp Intruder 开启多线程高并发上传 `shell.php`。<br>2. 同时开启多线程高并发访问 `shell.php`。<br>3. 在服务器删除文件前抢先执行并生成新马。 | 先保存文件，验证不通过再删除的逻辑。       |
+
+1. **Check 1: 前端 JS** -> 改后缀 `.jpg` 抓包 -> 改回 `.php`。
+
+2. **Check 2: MIME** -> 修改 `Content-Type: image/jpeg`。
+
+3. Check 3: 后缀黑名单
+
+    
+
+   ->
+
+   - 尝试 `.phtml`, `.php5`
+   - 上传 `.htaccess` / `.user.ini`
+   - (Win) 尝试 `空格`, `.`, `::$DATA`, `. .`, `大小写`
+   - 尝试双写 `pphphp`
+
+4. **Check 4: 后缀白名单** -> 尝试 `%00` 截断 (GET/POST)。
+
+5. **Check 5: 内容检查** -> 加文件头 `GIF89a` / 制作图片马。
+
+6. **Check 6: 逻辑/渲染** -> 条件竞争 / 二次渲染特定区注入。
+
+## pikachu
+
+这里面的三个都比较简单，一个前端一个mime一个图片马（图片马需要使用文件包含漏洞使php被解析）
