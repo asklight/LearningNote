@@ -101,3 +101,19 @@
 ## pikachu
 
 这里面的三个都比较简单，一个前端一个mime一个图片马（图片马需要使用文件包含漏洞使php被解析）
+
+## DVWA
+
+1. low 无过滤直接上传.php
+2. medium 尝试上传.php提示只能上传jpg,png，好像是白名单，尝试抓包修改content-type再上传，又成功了
+3. 还是图片马
+
+## ctfhub
+
+1. 无验证
+2. 前端验证
+3. mime认证  修改content-type
+4. .htaccess 文件 内容：`AddType application/x-httpd-php .jpg`
+5. 00截断 get型直接在url中输入shell.php%00，拼接的时候会把文件名拼在url后面，就是shell.php%00.jpg，上传的时候检验不出来，但是服务器会把%00视为结束
+6. 双写，后缀改为.pphphp
+7. 文件头检查 1.在php文件开头添加GIF89a

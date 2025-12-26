@@ -107,3 +107,11 @@ html转义字符
 1. low 同样是放在br标签里，直接闭合加a标签，payload:`<br><a onclick=alert()>11</a>`
 2. medium 这个message我怎么也闭合不了，`''<br>`会被替换，就尝试闭合name，name在前端有字数限制，修改后构造payload:`"</div><a onclick=alert()>11</a>`
 3. high 修改前端，用name闭合依旧可以(我也不知道修改前端算不算作弊？)
+
+
+
+## ctfhub
+
+1.空格过滤：想要构造标签`<a onclick=alert()>111</a>`,但是空格被过滤，可使用回车符等替换，制表符%09，换行符%0A，回车符%0D，试了一下发现不行，使用/分割元素可行
+
+做了几个终于明白了，这个需要获得flag，就得让bot机器人访问你构造的url(这个url中提供的是xss平台的图片)，然后你通过xss平台接受cookie
